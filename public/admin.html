@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin Panel</title><link rel="stylesheet" href="/style.css"></head>
+<body><header><h1>University API Access Management</h1><nav><a href="/admin">Admin</a><a href="/settings">API Settings</a><a href="/dashboard">Dashboard</a></nav></header>
+<main>
+<section class="card"><h2>Administrator Login</h2><p class="small">Enter the predefined admin key from your .env file. It is sent in the x-api-key header.</p><label>Admin API Key</label><input id="adminKey" type="password" placeholder="Admin API key"><button onclick="saveKey()">Use Key</button><div id="msg" class="message">Enter your admin key to load records.</div></section>
+<section class="card"><h2>Students</h2><button onclick="loadStudents()">Load Students</button><div id="students" class="table-wrap"></div></section>
+<section class="card"><h2>Teachers</h2><button onclick="loadTeachers()">Load Teachers</button><div id="teachers" class="table-wrap"></div></section>
+<section class="card"><h2>Generate API Key</h2><label>User Type</label><select id="userType"><option value="student">Student</option><option value="teacher">Teacher</option></select><label>User ID (from table above)</label><input id="userId" type="number" min="1" placeholder="e.g. 1"><label>Request Limit</label><input id="limit" type="number" min="1" value="20"><br><button onclick="generateKey()">Generate Key</button><div id="newKey" class="message"></div></section>
+<section class="card"><h2>API Keys, Usage and Status</h2><button onclick="loadKeys()">Refresh Keys</button><div id="keys" class="table-wrap"></div></section>
+</main>
+<script>
+let adminKey = '';
+function saveKey(){ adminKey=document.getElementById('adminKey').value.trim(); loadStudents(); loadTeachers(); loadKeys(); }
+async function adminFetch(url, options={}) {
+  const response=await fetch(url,{...options,headers:{'Content-Type':'application/json','x-api-key':adminKey,...(options.headers||{})}});
+  const data=await response.json();
+  if(!response.ok) throw new Error(data.message || 'Request failed');
+  return data;
+}
+function showError(error){ document.getElementById('msg').textContent=error.message; }
+function table(rows, columns, actions) {
+  if(!rows.length) return '<p>No records found.</p>';
+  let html='<table><thead><tr>'+columns.map(c=>'<th>'+c[1]+'</th>').join('')+(actions?'<th>Actions</th>':'')+'</tr></thead><tbody>';
+  rows.forEach(row=>{html+='<tr>'+columns.map(c=>'<td>'+String(row[c[0]] ?? '')+'</td>').join('')+(actions?'<td>'+actions(row)+'</td>':'')+'</tr>';});
+  return html+'</tbody></table>';
+}
+async function loadStudents(){try{let rows=await adminFetch('/api/admin/students');document.getElementById('students').innerHTML=table(rows,[['id','ID'],['roll_no','Roll No'],['full_name','Name'],['email','Email'],['department','Department'],['semester','Semester']]);document.getElementById('msg').textContent='Students loaded.';}catch(e){showError(e);}}
+async function loadTeachers(){try{let rows=await adminFetch('/api/admin/teachers');document.getElementById('teachers').innerHTML=table(rows,[['id','ID'],['employee_no','Employee No'],['full_name','Name'],['email','Email'],['department','Department']]);}catch(e){showError(e);}}
+async function generateKey(){try{let data=await adminFetch('/api/admin/keys',{method:'POST',body:JSON.stringify({user_type:document.getElementById('userType').value,user_id:document.getElementById('userId').value,request_limit:document.getElementById('limit').value})});document.getElementById('newKey').textContent=data.message+' Copy this key and give it to the assigned user: '+data.api_key;loadKeys();}catch(e){showError(e);}}
+async function loadKeys(){try{let rows=await adminFetch('/api/admin/keys');document.getElementById('keys').innerHTML=table(rows,[['id','ID'],['user_name','User'],['user_type','Type'],['user_id','User ID'],['api_key','API Key'],['requests_used','Used'],['request_limit','Limit'],['status','Status'],['created_at','Created']],r=>r.status==='active'?'<button class="secondary" onclick="changeLimit('+r.id+')">Change limit</button><button class="danger" onclick="revokeKey('+r.id+')">Revoke</button>':'Revoked');}catch(e){showError(e);}}
+async function changeLimit(id){let value=prompt('Enter the new positive request limit:');if(value===null)return;try{await adminFetch('/api/admin/keys/'+id+'/limit',{method:'PATCH',body:JSON.stringify({request_limit:value})});loadKeys();}catch(e){showError(e);}}
+async function revokeKey(id){if(!confirm('Revoke this API key?'))return;try{await adminFetch('/api/admin/keys/'+id+'/revoke',{method:'PATCH',body:'{}'});loadKeys();}catch(e){showError(e);}}
+</script></body></html>

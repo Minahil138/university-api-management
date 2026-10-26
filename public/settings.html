@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>API Settings</title><link rel="stylesheet" href="/style.css"></head>
+<body><header><h1>API Key Settings</h1><nav><a href="/admin">Admin</a><a href="/settings">API Settings</a><a href="/dashboard">Dashboard</a></nav></header>
+<main><section class="card"><h2>Save Assigned API Key</h2><p class="small">Paste the key issued by your administrator. This demo saves it in this browser's local storage.</p><label>API Key</label><input id="apiKey" type="password" placeholder="Paste assigned API key"><br><button onclick="save()">Save Key</button><button class="secondary" onclick="clearKey()">Clear Key</button><div id="msg" class="message"></div></section><section class="card"><h2>How it works</h2><p>The browser sends the saved key in the <code>x-api-key</code> request header. The server determines whether it belongs to a student or teacher and applies that role's permissions.</p></section></main>
+<script>
+const field=document.getElementById('apiKey');const msg=document.getElementById('msg');
+field.value=localStorage.getItem('universityApiKey')||'';
+function save(){if(!field.value.trim()){msg.textContent='Please enter an API key.';return;}localStorage.setItem('universityApiKey',field.value.trim());msg.textContent='API key saved in this browser.';}
+function clearKey(){localStorage.removeItem('universityApiKey');field.value='';msg.textContent='Saved key cleared.';}
+</script></body></html>
